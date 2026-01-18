@@ -1,0 +1,4 @@
+(executable
+ (public_name smallpascal)
+ (name main)
+ (libraries smallpascal))
