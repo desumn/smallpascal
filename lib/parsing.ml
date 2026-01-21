@@ -38,8 +38,7 @@ let rec tokenize lexbuf =
 
 type program = Program of { name : string; main_block : block }
 and block = statement list
-and statement = Print of expression
-
+and statement = Exit of expression
 and expression =
   | Integer of int
   | BinaryOperation of {
@@ -101,12 +100,12 @@ and parse_block lexbuf =
 
 and parse_statement lexbuf =
   match tokenize lexbuf with
-  | Identifier "print" ->
+  | Identifier "exit" ->
       let* expr =
         parse_between lexbuf ~opening:OpenParen ~closing:CloseParen
           ~parser:parse_expression
       in
-      Ok (Print expr)
+      Ok (Exit expr)
   | _ -> Error "Invalid statement"
 
 and parse_expression lexbuf =
