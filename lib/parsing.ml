@@ -39,6 +39,7 @@ let rec tokenize lexbuf =
 type program = Program of { name : string; main_block : block }
 and block = statement list
 and statement = Exit of expression
+
 and expression =
   | Integer of int
   | BinaryOperation of {
