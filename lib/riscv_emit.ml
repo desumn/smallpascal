@@ -156,26 +156,3 @@ let add = binary_register_instruction `Add
 let sub = binary_register_instruction `Sub
 let mul = binary_register_instruction `Mul
 
-let rec compile program =
-  match program with
-  | Program { main_block; _ } ->
-      let start = label "_start" in
-      [ section `Text; global start; tl_label start ] @ compile_block main_block
-
-and compile_block block = block |> List.map compile_statement |> List.flatten
-
-and compile_statement statement =
-  match statement with
-  | Exit expr -> compile_expression expr @ [ li A7 (Integer 93); ecall ]
-
-and compile_expression expression =
-  match expression with
-  | Integer int -> [ li A0 (Integer int) ]
-  | BinaryOperation { operator; left; right } ->
-      compile_expression left
-      @ [ mv T1 A0 ]
-      @ compile_expression right
-      @ [ binary_register_instruction (compile_operator operator) A0 T1 A0 ]
-
-let emit_program program =
-  compile program |> List.map emit |> CCList.to_string Fun.id ~sep:"\n"
