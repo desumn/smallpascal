@@ -1,5 +1,5 @@
 (library
  (name smallpascal)
- (libraries sedlex containers)
+ (libraries sedlex containers containers-data)
  (preprocess
   (pps sedlex.ppx)))

@@ -1,4 +1,4 @@
-(lang dune 3.20)
+(lang dune 3.21)
 
 (name smallpascal)
 
@@ -19,7 +19,7 @@
  (name smallpascal)
  (synopsis "A short synopsis")
  (description "A longer description")
- (depends ocaml)
+ (depends ocaml containers containers-data sedlex)
  (tags
   ("add topics" "to describe" your project)))
 

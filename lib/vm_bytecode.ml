@@ -3,7 +3,7 @@ type instruction =
   | Nop
 
 
-  | Push
+  | Push of int
   | Pop
   | Swap
 
