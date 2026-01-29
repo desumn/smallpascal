@@ -133,8 +133,9 @@ let rec step vm_state =
   | uncontinuable_state -> uncontinuable_state
 and step_from_vm ({stack ; instructions ; locals } as vm) =
   let open Stack in
-  match instructions with
-  | [] ->
+  match instructions with 
+  | []
+  | Exit::_ ->
       begin match pop stack with
       | Error `Underflow -> Exited (0)
       | Ok (~top, _) -> Exited top

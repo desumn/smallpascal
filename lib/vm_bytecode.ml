@@ -13,3 +13,6 @@ type instruction =
   
 
   | Add | Sub | Mul
+
+  | Exit
+  
