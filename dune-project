@@ -19,7 +19,7 @@
  (name smallpascal)
  (synopsis "A short synopsis")
  (description "A longer description")
- (depends ocaml containers containers-data sedlex)
+ (depends ocaml utop containers containers-data sedlex)
  (tags
   ("add topics" "to describe" your project)))
 
