@@ -1,8 +1,10 @@
 
 module Stack = struct
 
+  type stack = int list
+
   type t = {
-    stack : int list; depth : int; max_depth : int
+    stack : stack; depth : int; max_depth : int
   }
 
   let create ~max_depth = {stack = []; depth = 0; max_depth} 
@@ -13,9 +15,51 @@ module Stack = struct
 
   let pop =
     function
-    | { stack = []; _ } -> Error `Stack_underflow
+    | { stack = []; _ } -> Error `Underflow
     | { stack = top::rs ; depth; _ } as stack ->
         Ok (top, { stack with stack = rs; depth = depth - 1})
+
+   module Transformation = struct
+
+      type 'error transformation = stack -> (stack * depth_change:int, 'error) result
+
+      let unary operation : _ transformation =
+        function
+        | [] -> Error `Empty_stack
+        | l::rest -> Ok ((operation l)::rest, ~depth_change:0) 
+
+      let binary operation : _ transformation =
+        function
+        | [] -> Error `Empty_stack
+        | [_] -> Error `Insufficient_arguments
+        | l::r::rest -> Ok ((operation l r)::rest, ~depth_change:(-1)) 
+
+      let add = binary ( + )
+
+      let sub = binary ( - )
+
+      let mul = binary ( * )
+
+      let swap : _ transformation =
+        function
+        | [] -> Error `Empty_stack
+        | [_] -> Error `Insufficient_arguments
+        | l::r::rest -> Ok (r::l::rest, ~depth_change:0) 
+
+      let dup : _ transformation =
+        function
+        | [] -> Error `Empty_stack
+        | l::rest -> Ok (l::l::rest, ~depth_change:1) 
+      
+   end
+
+   let transform transformation { stack ; depth; max_depth } =
+     let (stack, ~depth_change) = transformation stack in 
+     if depth + depth_change > max_depth
+     then Error `Overflow
+     else Ok { stack; depth = depth + depth_change; max_depth}
+
+  
 end
 
 module Locals = struct
@@ -62,20 +106,4 @@ let rec step vm_state =
   match vm_state with
   | Running vm -> step_from_vm vm
   | uncontinuable_state -> uncontinuable_state
-and step_from_vm vm =
-  let open Result.Syntax in
-  match vm.instructions with
-  | [||] ->
-      begin match Stack.pop vm.stack with
-      | Error _ -> Exited 0
-      | Ok (i, _) -> Exited i
-      end
-  | [|Nop; _|] -> Running vm
-  | [|Push i; _|] ->
-      begin match Stack.push i vm.stack with
-      | Ok new_stack -> Running { vm with stack = new_stack }
-      | Error `Overflow -> Error Stack_overflow 
-      end 
-  | _ -> Running vm
-  
-
+and step_from_vm vm = Exited 0
