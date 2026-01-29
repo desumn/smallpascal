@@ -17,7 +17,7 @@ module Stack = struct
     function
     | { stack = []; _ } -> Error `Underflow
     | { stack = top::rs ; depth; _ } as stack ->
-        Ok (top, { stack with stack = rs; depth = depth - 1})
+        Ok (~top, { stack with stack = rs; depth = depth - 1})
 
    module Transformation = struct
 
