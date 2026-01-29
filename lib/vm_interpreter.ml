@@ -23,6 +23,15 @@ module Stack = struct
 
       type 'error transformation = stack -> (stack * depth_change:int, 'error) result
 
+
+      let compose (trans1 : _ transformation) (trans2 : _ transformation) : _ transformation =
+        let open Result.Syntax in
+        (fun stack ->
+           let* (stack, ~depth_change:change1) = trans1 stack in
+           let+ (stack, ~depth_change:change2) = trans2 stack in
+           (stack, ~depth_change:(change1 + change2))
+        )
+
       let unary operation : _ transformation =
         function
         | [] -> Error `Empty_stack
@@ -34,11 +43,6 @@ module Stack = struct
         | [_] -> Error `Insufficient_arguments
         | l::r::rest -> Ok ((operation l r)::rest, ~depth_change:(-1)) 
 
-      let add = binary ( + )
-
-      let sub = binary ( - )
-
-      let mul = binary ( * )
 
       let swap : _ transformation =
         function
@@ -51,6 +55,12 @@ module Stack = struct
         | [] -> Error `Empty_stack
         | l::rest -> Ok (l::l::rest, ~depth_change:1) 
       
+      let add = binary ( + )
+
+      let sub = compose swap (binary ( - ))
+
+      let mul = binary ( * )
+
    end
 
    let transform (transformation : 'a Transformation.transformation) { stack ; depth; max_depth } =
