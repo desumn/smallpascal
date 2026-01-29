@@ -53,8 +53,9 @@ module Stack = struct
       
    end
 
-   let transform transformation { stack ; depth; max_depth } =
-     let (stack, ~depth_change) = transformation stack in 
+   let transform (transformation : 'a Transformation.transformation) { stack ; depth; max_depth } =
+     let open Result.Syntax in
+     let* (stack, ~depth_change) = transformation stack in 
      if depth + depth_change > max_depth
      then Error `Overflow
      else Ok { stack; depth = depth + depth_change; max_depth}
@@ -74,15 +75,15 @@ module Locals = struct
 
   let store locals index value =
     if index >= CCRAL.length locals 
-    then Ok (CCRAL.set locals index value)  
-    else Error `Local_index_out_of_bound
+    then Error `Local_index_out_of_bound
+    else Ok (CCRAL.set locals index value)  
 
 end
 
 type vm = {
   stack : Stack.t;
   locals : Locals.t;
-  instructions : Vm_bytecode.instruction iarray
+  instructions : Vm_bytecode.instruction list
   
 }
 
@@ -90,6 +91,8 @@ type vm_error =
   | Stack_overflow
   | Stack_underflow
   | Local_not_found of int 
+  | Local_write_error of int
+  | Insufficient_arguments of (name:string * arity:int * provided:int)
 
 type vm_state =
   | Running of vm
@@ -102,8 +105,85 @@ let start_vm instructions = Running {
     instructions
   }
 
+let transformation_of_instruction =
+  let open Vm_bytecode in
+  let open Stack.Transformation in
+  function
+  | Swap -> Some swap
+  | Add -> Some add
+  | Sub -> Some sub
+  | Mul -> Some mul
+  | Dup -> Some dup
+  | _ -> None
+
+let arity_error instruction ~provided = 
+  let open Vm_bytecode in
+  match instruction with
+  | Swap -> (~name:"swap", ~arity:2, ~provided)
+  | Add -> (~name:"add", ~arity:2, ~provided)
+  | Sub -> (~name:"sub", ~arity:2, ~provided)
+  | Mul -> (~name:"mul", ~arity:2, ~provided)
+  | Dup -> (~name:"dup", ~arity:1, ~provided)
+  | _ -> (~name:"unknown", ~arity:0, ~provided)
+
+
 let rec step vm_state =
   match vm_state with
   | Running vm -> step_from_vm vm
   | uncontinuable_state -> uncontinuable_state
-and step_from_vm vm = Exited 0
+and step_from_vm ({stack ; instructions ; locals } as vm) =
+  let open Stack in
+  match instructions with
+  | [] ->
+      begin match pop stack with
+      | Error `Underflow -> Exited (0)
+      | Ok (~top, _) -> Exited top
+      end
+  | Nop::instructions -> Running ({vm with instructions})
+  | (Push value)::instructions ->
+      begin match push value stack with
+      | Error `Overflow -> Error Stack_overflow
+      | Ok stack -> Running { vm with stack; instructions }
+      end
+  | Pop::instructions ->
+      begin match pop stack with
+      | Error `Underflow -> Error Stack_underflow
+      | Ok (stack, ..) -> Running {vm with stack; instructions }
+      end
+  | (Add as binary)::instructions
+  | (Sub as binary)::instructions
+  | (Mul as binary)::instructions
+  | (Swap as binary)::instructions ->
+      begin match transform (Option.get @@ transformation_of_instruction binary) stack with
+      | Error `Overflow -> Error Stack_overflow
+      | Error `Empty_stack ->  Error (Insufficient_arguments (arity_error binary ~provided:0))
+      | Error `Insufficient_arguments -> Error (Insufficient_arguments (arity_error binary ~provided:1))
+      | Ok stack -> Running { vm with stack; instructions }
+      end 
+  | (Dup as unary)::instructions ->
+      begin match transform (Option.get @@ transformation_of_instruction unary) stack with
+      | Error `Overflow -> Error Stack_overflow
+      | Error `Empty_stack ->  Error (Insufficient_arguments (arity_error unary ~provided:0))
+      | Ok stack -> Running { vm with stack; instructions }
+      | _ -> failwith "Can not happen"
+      end 
+  | (LoadLocal index)::instructions ->
+      let local = Locals.load locals index in
+      begin match local with
+      | Error `Local_not_found -> Error (Local_not_found index)
+      | Ok local ->
+          begin match Stack.push local stack with
+          | Error `Overflow -> Error Stack_overflow
+          | Ok stack -> Running {vm with stack; instructions}
+          end
+      end      
+  | (StoreLocal index)::instructions ->
+      begin match pop stack with
+      | Error `Underflow -> Error Stack_underflow
+      | Ok (~top, stack) -> 
+      begin match Locals.store locals index top with
+      | Error `Local_index_out_of_bound -> Error (Local_write_error index)
+      | Ok locals -> Running {stack; locals; instructions}
+      end
+      end
+

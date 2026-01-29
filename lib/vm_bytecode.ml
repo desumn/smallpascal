@@ -6,6 +6,7 @@ type instruction =
   | Push of int
   | Pop
   | Swap
+  | Dup
 
   | LoadLocal of int
   | StoreLocal of int
