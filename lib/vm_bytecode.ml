@@ -1,19 +1,9 @@
 
-type instruction =
-  | Nop
 
+type no_change = [ `Nop | `Exit ]
+and adder = [ `Push of int | `LoadLocal of int ]
+and remover = [ `Pop | `StoreLocal of int ]
+and unary_operator = [ `Dup | `Not ]
+and binary_operator = [ `Add | `Sub | `Mul | `Or | `And | `Swap ]
 
-  | Push of int
-  | Pop
-  | Swap
-  | Dup
-
-  | LoadLocal of int
-  | StoreLocal of int
-  
-
-  | Add | Sub | Mul
-  | Or | And | Not
-
-  | Exit
-  
+type instruction = [ no_change | adder | remover | unary_operator | binary_operator ]

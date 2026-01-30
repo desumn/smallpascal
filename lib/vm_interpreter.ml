@@ -1,3 +1,5 @@
+open Vm_bytecode
+
 
 module Stack = struct
 
@@ -120,32 +122,29 @@ let start_vm instructions = Running {
     instructions
   }
 
-let transformation_of_instruction =
-  let open Vm_bytecode in
+let transformation_of_instruction (instruction : [unary_operator | binary_operator]) =
   let open Stack.Transformation in
-  function
-  | Swap -> Some swap
-  | Add -> Some add
-  | Sub -> Some sub
-  | Mul -> Some mul
-  | Dup -> Some dup
-  | Or -> Some bitwise_or
-  | And -> Some bitwise_and
-  | Not -> Some boolean_not
-  | _ -> None
+  match instruction with
+  | `Swap -> swap
+  | `Add -> add
+  | `Sub -> sub
+  | `Mul -> mul
+  | `Dup -> dup
+  | `Or -> bitwise_or
+  | `And -> bitwise_and
+  | `Not -> boolean_not
 
-let arity_error instruction ~provided = 
+let arity_error (instruction : [unary_operator | binary_operator]) ~provided = 
   let open Vm_bytecode in
   match instruction with
-  | Swap -> (~name:"swap", ~arity:2, ~provided)
-  | Add -> (~name:"add", ~arity:2, ~provided)
-  | Sub -> (~name:"sub", ~arity:2, ~provided)
-  | Mul -> (~name:"mul", ~arity:2, ~provided)
-  | Dup -> (~name:"dup", ~arity:1, ~provided)
-  | And -> (~name:"and", ~arity:2, ~provided)
-  | Or -> (~name:"or", ~arity:2, ~provided)
-  | Not -> (~name:"not", ~arity:1, ~provided)
-  | _ -> (~name:"unknown", ~arity:0, ~provided)
+  | `Swap -> (~name:"swap", ~arity:2, ~provided)
+  | `Add -> (~name:"add", ~arity:2, ~provided)
+  | `Sub -> (~name:"sub", ~arity:2, ~provided)
+  | `Mul -> (~name:"mul", ~arity:2, ~provided)
+  | `Dup -> (~name:"dup", ~arity:1, ~provided)
+  | `And -> (~name:"and", ~arity:2, ~provided)
+  | `Or -> (~name:"or", ~arity:2, ~provided)
+  | `Not -> (~name:"not", ~arity:1, ~provided)
 
 
 let rec step vm_state =
@@ -156,43 +155,37 @@ and step_from_vm ({stack ; instructions ; locals } as vm) =
   let open Stack in
   match instructions with 
   | []
-  | Exit::_ ->
+  | `Exit::_ ->
       begin match pop stack with
       | Error `Underflow -> Exited (0)
       | Ok (~top, _) -> Exited top
       end
-  | Nop::instructions -> Running ({vm with instructions})
-  | (Push value)::instructions ->
+  | `Nop::instructions -> Running ({vm with instructions})
+  | (`Push value)::instructions ->
       begin match push value stack with
       | Error `Overflow -> Error Stack_overflow
       | Ok stack -> Running { vm with stack; instructions }
       end
-  | Pop::instructions ->
+  | `Pop::instructions ->
       begin match pop stack with
       | Error `Underflow -> Error Stack_underflow
       | Ok (stack, ..) -> Running {vm with stack; instructions }
       end
-  | (Add as binary)::instructions
-  | (Sub as binary)::instructions
-  | (Mul as binary)::instructions
-  | (Or as binary)::instructions
-  | (And as binary)::instructions
-  | (Swap as binary)::instructions ->
-      begin match transform (Option.get @@ transformation_of_instruction binary) stack with
+  | (#binary_operator as binary)::instructions ->
+      begin match transform (transformation_of_instruction binary) stack with
       | Error `Overflow -> Error Stack_overflow
       | Error `Empty_stack ->  Error (Insufficient_arguments (arity_error binary ~provided:0))
       | Error `Insufficient_arguments -> Error (Insufficient_arguments (arity_error binary ~provided:1))
       | Ok stack -> Running { vm with stack; instructions }
       end 
-  | (Not as unary)::instructions
-  | (Dup as unary)::instructions ->
-      begin match transform (Option.get @@ transformation_of_instruction unary) stack with
+  | (#unary_operator as unary)::instructions ->
+      begin match transform (transformation_of_instruction unary) stack with
       | Error `Overflow -> Error Stack_overflow
       | Error `Empty_stack ->  Error (Insufficient_arguments (arity_error unary ~provided:0))
       | Ok stack -> Running { vm with stack; instructions }
       | _ -> failwith "Can not happen"
       end 
-  | (LoadLocal index)::instructions ->
+  | (`LoadLocal index)::instructions ->
       let local = Locals.load locals index in
       begin match local with
       | Error `Local_not_found -> Error (Local_not_found index)
@@ -202,7 +195,7 @@ and step_from_vm ({stack ; instructions ; locals } as vm) =
           | Ok stack -> Running {vm with stack; instructions}
           end
       end      
-  | (StoreLocal index)::instructions ->
+  | (`StoreLocal index)::instructions ->
       begin match pop stack with
       | Error `Underflow -> Error Stack_underflow
       | Ok (~top, stack) -> 
