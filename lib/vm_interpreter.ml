@@ -198,3 +198,15 @@ and step_from_vm ({stack ; instructions ; locals } as vm) =
       end
       end
 
+
+
+let run instructions =
+  let vm = start_vm instructions in
+  let rec loop vm =
+    match vm with
+    | Exited i -> Ok i
+    | (Running _) as vm -> loop (step vm)
+    | Error error -> Error error 
+  in loop vm
+
+
