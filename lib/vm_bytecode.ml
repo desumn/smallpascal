@@ -13,6 +13,7 @@ type instruction =
   
 
   | Add | Sub | Mul
+  | Or | And | Not
 
   | Exit
   

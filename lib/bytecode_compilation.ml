@@ -6,6 +6,9 @@ let instruction_of_operator =
   | `Plus -> Add
   | `Minus -> Sub
   | `Times -> Mul
+  | `Or -> Or
+  | `And -> And
+  | `Not -> Not
 
 
 let rec compile program =
@@ -22,7 +25,12 @@ and compile_statement : statement -> instruction list =
     @ [Exit]
 and compile_expression =
   function
+  | Boolean true -> [Push 1]
+  | Boolean false -> [Push 0]
   | Integer i -> [Push i]
+  | UnaryOperation {operator ; expression } ->
+    compile_expression expression
+    @ [instruction_of_operator operator]
   | BinaryOperation { operator; left; right } ->
     compile_expression left
     @ compile_expression right

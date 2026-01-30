@@ -9,6 +9,9 @@ type token =
   | Asterisk
   | Integer of int
   | Identifier of string
+  | True | False
+  | Not
+  | Or | And
   | OpenParen
   | CloseParen
   | Semicolon
@@ -24,11 +27,16 @@ let rec tokenize lexbuf =
   | "+" -> Plus
   | "-" -> Minus
   | "*" -> Asterisk
-  | "begin" -> Begin
-  | "end" -> End
   | "(" -> OpenParen
   | ")" -> CloseParen
   | ";" -> Semicolon
+  | "true" -> True
+  | "false" -> False
+  | "or" -> Or
+  | "and" -> And
+  | "not" -> Not
+  | "begin" -> Begin
+  | "end" -> End
   | "program" -> Program
   | number -> Integer (int_of_string @@ Sedlexing.Latin1.lexeme lexbuf)
   | alpha, Star (alpha | digit | '_') ->
@@ -41,9 +49,14 @@ and block = statement list
 and statement = Exit of expression
 
 and expression =
+  | Boolean of bool
   | Integer of int
+  | UnaryOperation of {
+      operator : [ `Not ];
+      expression : expression;
+  }
   | BinaryOperation of {
-      operator : [ `Plus | `Minus | `Times ];
+      operator : [ `Plus | `Minus | `Times | `Or | `And ];
       left : expression;
       right : expression;
     }
@@ -52,6 +65,8 @@ let operator_of_token = function
   | Plus -> `Plus
   | Minus -> `Minus
   | Asterisk -> `Times
+  | Or -> `Or
+  | And -> `And
   | _ -> assert false
 
 let parse_between lexbuf ~opening ~closing ~parser =
@@ -111,7 +126,7 @@ and parse_statement lexbuf =
 
 and parse_expression lexbuf =
   let terms =
-    parse_separated_sequence lexbuf ~separators:[ Plus; Minus ]
+    parse_separated_sequence lexbuf ~separators:[ Plus; Minus; Or ]
       ~parser:parse_term ~transform:operator_of_token
       ~join:(fun right operator left ->
         BinaryOperation { operator; left; right })
@@ -121,7 +136,7 @@ and parse_expression lexbuf =
 
 and parse_term lexbuf =
   let factors =
-    parse_separated_sequence lexbuf ~separators:[ Asterisk ]
+    parse_separated_sequence lexbuf ~separators:[ Asterisk; And ]
       ~parser:parse_factor ~transform:operator_of_token
       ~join:(fun right operator left ->
         BinaryOperation { operator; left; right })
@@ -130,8 +145,17 @@ and parse_term lexbuf =
   factors
 
 and parse_factor lexbuf =
+  let open Result.Syntax in
   match tokenize lexbuf with
+  | Not ->
+      let* expression = parse_factor lexbuf in
+      Ok (UnaryOperation {
+        operator = `Not;
+        expression
+      })
   | Integer i -> Ok (Integer i)
+  | True -> Ok (Boolean true)
+  | False -> Ok (Boolean false)
   | OpenParen ->
       Sedlexing.rollback lexbuf;
       parse_between lexbuf ~opening:OpenParen ~closing:CloseParen

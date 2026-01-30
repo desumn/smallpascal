@@ -43,7 +43,6 @@ module Stack = struct
         | [_] -> Error `Insufficient_arguments
         | l::r::rest -> Ok ((operation l r)::rest, ~depth_change:(-1)) 
 
-
       let swap : _ transformation =
         function
         | [] -> Error `Empty_stack
@@ -60,6 +59,12 @@ module Stack = struct
       let sub = compose swap (binary ( - ))
 
       let mul = binary ( * )
+
+      let boolean_not = unary (fun i -> if i = 0 then 1 else 0)
+
+      let bitwise_and = binary (land)
+
+      let bitwise_or = binary (lor)
 
    end
 
@@ -124,6 +129,9 @@ let transformation_of_instruction =
   | Sub -> Some sub
   | Mul -> Some mul
   | Dup -> Some dup
+  | Or -> Some bitwise_or
+  | And -> Some bitwise_and
+  | Not -> Some boolean_not
   | _ -> None
 
 let arity_error instruction ~provided = 
@@ -134,6 +142,9 @@ let arity_error instruction ~provided =
   | Sub -> (~name:"sub", ~arity:2, ~provided)
   | Mul -> (~name:"mul", ~arity:2, ~provided)
   | Dup -> (~name:"dup", ~arity:1, ~provided)
+  | And -> (~name:"and", ~arity:2, ~provided)
+  | Or -> (~name:"or", ~arity:2, ~provided)
+  | Not -> (~name:"not", ~arity:1, ~provided)
   | _ -> (~name:"unknown", ~arity:0, ~provided)
 
 
@@ -164,6 +175,8 @@ and step_from_vm ({stack ; instructions ; locals } as vm) =
   | (Add as binary)::instructions
   | (Sub as binary)::instructions
   | (Mul as binary)::instructions
+  | (Or as binary)::instructions
+  | (And as binary)::instructions
   | (Swap as binary)::instructions ->
       begin match transform (Option.get @@ transformation_of_instruction binary) stack with
       | Error `Overflow -> Error Stack_overflow
@@ -171,6 +184,7 @@ and step_from_vm ({stack ; instructions ; locals } as vm) =
       | Error `Insufficient_arguments -> Error (Insufficient_arguments (arity_error binary ~provided:1))
       | Ok stack -> Running { vm with stack; instructions }
       end 
+  | (Not as unary)::instructions
   | (Dup as unary)::instructions ->
       begin match transform (Option.get @@ transformation_of_instruction unary) stack with
       | Error `Overflow -> Error Stack_overflow
@@ -197,7 +211,6 @@ and step_from_vm ({stack ; instructions ; locals } as vm) =
       | Ok locals -> Running {stack; locals; instructions}
       end
       end
-
 
 
 let run instructions =
