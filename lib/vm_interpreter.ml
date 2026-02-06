@@ -25,6 +25,8 @@ module Stack = struct
     let right = pop stack in
     List.iter (push stack) (List.rev @@ operation left right)
 
+  let comparison operation = binary (fun left right -> if operation left right then [1] else [0])
+
   let flat1 operation operand = [operation operand]
   let flat2 operation left right = [operation left right]
   
@@ -38,6 +40,13 @@ module Stack = struct
   let bitwise_not = unary (flat1 (lnot))
   let bitwise_or = binary (flat2 (lor))
   let bitwise_and = binary (flat2 (land))
+
+  let equal = comparison (=)
+  let not_equal = comparison (<>)
+  let greater = comparison (>)
+  let lesser = comparison (<)
+  let greater_equal = comparison (>=)
+  let lesser_equal = comparison (<=)
 
 end
 
@@ -98,6 +107,12 @@ let transformation_of_instruction (instruction : [unary_operator | binary_operat
   | `Or -> bitwise_or
   | `And -> bitwise_and
   | `Not -> bitwise_not
+  | `Equal -> equal
+  | `NotEqual -> not_equal
+  | `Greater -> greater
+  | `Lesser -> lesser
+  | `GreaterEqual -> greater_equal
+  | `LesserEqual -> lesser_equal
 
 let rec step vm_state =
   match vm_state with
@@ -115,4 +130,10 @@ and step_from_vm ({stack ; instructions ; locals } as vm) =
   | (`StoreLocal index) ->
       let value = pop stack in
       Locals.store locals index value; Running vm
+  | `Jump address -> Instructions.jump instructions address; Running vm
+  | `CondJump address ->
+      let conditional = pop stack in 
+      match conditional with
+      | 0 -> Instructions.jump instructions address; Running vm
+      | _ -> Running vm
 
