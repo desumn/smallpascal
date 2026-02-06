@@ -18,12 +18,12 @@ module Stack = struct
 
   let unary operation stack =
     let operand = pop stack in
-    List.iter (push stack) (List.rev @@ operation operand)
+    List.iter (push stack) (operation operand)
 
   let binary operation stack =
-    let left = pop stack in 
-    let right = pop stack in
-    List.iter (push stack) (List.rev @@ operation left right)
+    let right = pop stack in 
+    let left = pop stack in
+    List.iter (push stack) (operation left right)
 
   let comparison operation = binary (fun left right -> if operation left right then [1] else [0])
 
@@ -131,7 +131,7 @@ and step_from_vm ({stack ; instructions ; locals } as vm) =
       let value = pop stack in
       Locals.store locals index value; Running vm
   | `Jump address -> Instructions.jump instructions address; Running vm
-  | `CondJump address ->
+  | `JumpIfZero address ->
       let conditional = pop stack in 
       match conditional with
       | 0 -> Instructions.jump instructions address; Running vm
