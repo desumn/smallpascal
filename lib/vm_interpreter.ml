@@ -113,6 +113,6 @@ and step_from_vm ({stack ; instructions ; locals } as vm) =
   | (#unary_operator | #binary_operator as operator) -> transformation_of_instruction operator stack; Running vm
   | (`LoadLocal index) -> push stack (Locals.load locals index); Running vm
   | (`StoreLocal index) ->
-      let value = Locals.load locals index in
-      push stack value; Running vm
+      let value = pop stack in
+      Locals.store locals index value; Running vm
 
