@@ -133,7 +133,7 @@ and step_from_vm ({stack ; instructions ; locals } as vm) =
   | `Jump address -> Instructions.jump instructions address; Running vm
   | `JumpIfZero address ->
       let conditional = pop stack in 
-      match conditional with
-      | 0 -> Instructions.jump instructions address; Running vm
-      | _ -> Running vm
+      if conditional = 0
+      then (Instructions.jump instructions address; Running vm)
+      else Running vm
 
