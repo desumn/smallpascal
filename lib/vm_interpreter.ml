@@ -34,7 +34,7 @@ module Stack = struct
   let dup = unary (fun operand -> [operand ; operand])
 
   let add = binary (flat2 (+))
-  let sub stack = swap stack; binary (flat2 (-)) stack
+  let sub = binary (flat2 (-))
   let mul = binary (flat2 ( * ))
 
   let bitwise_not = unary (flat1 (lnot))
