@@ -1,7 +1,2 @@
 (library
- (name smallpascal)
- (libraries sedlex containers containers-data)
- (preprocess
-  (per_module
-   ((pps sedlex.ppx)
-    Parsing))))
+ (name someml))

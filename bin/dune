@@ -1,4 +1,4 @@
 (executable
- (public_name smallpascal)
+ (public_name someml)
  (name main)
- (libraries smallpascal))
+ (libraries someml))
